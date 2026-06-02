@@ -30,6 +30,10 @@ func createDefinition() plugin.CreateSpec {
 
 // RegisterCommands registers OJS commands with the plugin SDK.
 func RegisterCommands(s *plugin.SDK) {
+	s.SetComposeProjectDiscovery(plugin.ComposeProjectDiscovery{
+		RequiredServices: []string{"ojs"},
+		Reason:           "ojs service",
+	})
 	s.AddCommand(s.GetDiscoveryMetadataCommand())
 	plugin.RegisterStandardComposeTemplate(s, createDefinition(), plugin.StandardComposeTemplateOptions{
 		DefaultPath:   defaultPath,
