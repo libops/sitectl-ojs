@@ -7,7 +7,6 @@ const (
 	createBranch = "main"
 	pluginName   = "ojs"
 	defaultPath  = "./ojs"
-	displayName  = "OJS"
 )
 
 func createDefinition() plugin.CreateSpec {
@@ -34,11 +33,11 @@ func RegisterCommands(s *plugin.SDK) {
 		RequiredServices: []string{"ojs"},
 		Reason:           "ojs service",
 	})
-	s.RegisterStandardComposeTemplate(createDefinition(), plugin.StandardComposeTemplateOptions{
+	s.RegisterComposeTemplateCreateRunner(createDefinition(), plugin.ComposeTemplateCreateOptions{
 		DefaultPath:   defaultPath,
 		DefaultPlugin: pluginName,
 		ReadyMessage:  "OJS is ready for use through sitectl.",
-		DisplayName:   displayName,
 	})
+	s.RegisterHealthcheckRunner(ojsHealthcheckRunner{})
 	registerOJSCommands(s)
 }
