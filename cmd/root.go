@@ -34,8 +34,7 @@ func RegisterCommands(s *plugin.SDK) {
 		RequiredServices: []string{"ojs"},
 		Reason:           "ojs service",
 	})
-	s.AddCommand(s.GetDiscoveryMetadataCommand())
-	plugin.RegisterStandardComposeTemplate(s, createDefinition(), plugin.StandardComposeTemplateOptions{
+	s.RegisterStandardComposeTemplate(createDefinition(), plugin.StandardComposeTemplateOptions{
 		DefaultPath:   defaultPath,
 		DefaultPlugin: pluginName,
 		ReadyMessage:  "OJS is ready for use through sitectl.",
