@@ -20,6 +20,7 @@ func main() {
 		Description:  "Open Journal Systems helpers",
 		Author:       "libops",
 		TemplateRepo: "https://github.com/libops/ojs",
+		Includes:     cmd.IncludedPlugins(),
 	})
 
 	cmd.RegisterCommands(sdk)
