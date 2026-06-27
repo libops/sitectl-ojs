@@ -73,9 +73,11 @@ build_plugin() {
 
 create_site() {
 	local target="${PLUGIN_NAME}/${CREATE_DEFINITION}"
-	local extra_args=()
+	local extra_args=(--tag ojs=nginx-1.30.3-php84)
 	if [ -n "${CREATE_ARGS}" ]; then
-		read -r -a extra_args <<< "${CREATE_ARGS}"
+		local create_args=()
+		read -r -a create_args <<< "${CREATE_ARGS}"
+		extra_args+=("${create_args[@]}")
 	fi
 
 	HOME="${SITECTL_HOME}" sitectl create "${target}" \
@@ -83,19 +85,7 @@ create_site() {
 		--type local \
 		--checkout-source template \
 		--default-context \
-		--setup-only \
 		"${extra_args[@]}"
-}
-
-run_make_target() {
-	local target="$1"
-	if ! (
-		cd "${SITE_DIR}" &&
-			make "${target}"
-	); then
-		dump_compose_debug
-		exit 1
-	fi
 }
 
 run_healthcheck() {
@@ -124,8 +114,6 @@ run_healthcheck() {
 main() {
 	build_plugin
 	create_site
-	run_make_target init
-	run_make_target up
 	run_healthcheck
 }
 

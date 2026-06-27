@@ -1,6 +1,11 @@
 package cmd
 
-import "github.com/libops/sitectl/pkg/plugin"
+import (
+	corecomponent "github.com/libops/sitectl/pkg/component"
+	"github.com/libops/sitectl/pkg/plugin"
+	coredevmode "github.com/libops/sitectl/pkg/services/devmode"
+	coretraefik "github.com/libops/sitectl/pkg/services/traefik"
+)
 
 const (
 	createRepo   = "https://github.com/libops/ojs"
@@ -11,19 +16,31 @@ const (
 
 func createDefinition() plugin.CreateSpec {
 	return plugin.CreateSpec{
-		Name:                 "default",
-		Description:          "Create an Open Journal Systems stack",
-		Default:              true,
-		MinCPUCores:          2,
-		MinMemory:            "4 GiB",
-		MinDiskSpace:         "20 GiB",
-		DockerComposeRepo:    createRepo,
-		DockerComposeBranch:  createBranch,
-		DockerComposeBuild:   []string{"make build"},
-		DockerComposeInit:    []string{"make init"},
-		DockerComposeUp:      []string{"make up"},
-		DockerComposeDown:    []string{"make down"},
-		DockerComposeRollout: []string{"make rollout"},
+		Name:                "default",
+		Description:         "Create an Open Journal Systems stack",
+		Default:             true,
+		MinCPUCores:         2,
+		MinMemory:           "4 GiB",
+		MinDiskSpace:        "20 GiB",
+		DockerComposeRepo:   createRepo,
+		DockerComposeBranch: createBranch,
+		DockerComposeBuild: []string{
+			"docker compose pull --ignore-buildable",
+			"docker compose build --pull",
+		},
+		DockerComposeInit: []string{
+			"docker compose pull --ignore-buildable",
+			"docker compose build --pull",
+			"docker compose run --rm init",
+		},
+		DockerComposeUp: []string{
+			"docker compose pull --ignore-buildable",
+			"docker compose build --pull",
+			"./scripts/init-if-needed.sh",
+			"docker compose up --remove-orphans -d",
+		},
+		DockerComposeDown:    []string{"docker compose down"},
+		DockerComposeRollout: []string{"./scripts/rollout.sh"},
 	}
 }
 
@@ -38,6 +55,40 @@ func RegisterCommands(s *plugin.SDK) {
 		DefaultPlugin: pluginName,
 		ReadyMessage:  "OJS is ready for use through sitectl.",
 	})
+	registerApplicationComponents(s, "OJS", "ojs")
 	s.RegisterHealthcheckRunner(ojsHealthcheckRunner{})
 	registerOJSCommands(s)
+}
+
+func registerApplicationComponents(s *plugin.SDK, displayName, appService string) {
+	reverseProxy, err := coretraefik.ReverseProxy(coretraefik.ReverseProxyOptions{AppService: appService})
+	if err != nil {
+		panic(err)
+	}
+	uploadLimits, err := coretraefik.UploadLimits(coretraefik.UploadLimitsOptions{AppService: appService})
+	if err != nil {
+		panic(err)
+	}
+	devMode, err := coredevmode.Component(coredevmode.Options{
+		AppService: appService,
+		Volumes: []string{
+			"./plugins/blocks:/var/www/ojs/plugins/blocks:z,rw",
+			"./plugins/gateways:/var/www/ojs/plugins/gateways:z,rw",
+			"./plugins/generic:/var/www/ojs/plugins/generic:z,rw",
+			"./plugins/importexport:/var/www/ojs/plugins/importexport:z,rw",
+			"./plugins/metadata:/var/www/ojs/plugins/metadata:z,rw",
+			"./plugins/oaiMetadataFormats:/var/www/ojs/plugins/oaiMetadataFormats:z,rw",
+			"./plugins/paymethod:/var/www/ojs/plugins/paymethod:z,rw",
+			"./plugins/pubIds:/var/www/ojs/plugins/pubIds:z,rw",
+			"./plugins/reports:/var/www/ojs/plugins/reports:z,rw",
+			"./plugins/themes:/var/www/ojs/plugins/themes:z,rw",
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+	s.RegisterServiceComponents(plugin.ServiceComponentRegistryOptions{
+		DisplayName: displayName,
+		Components:  []corecomponent.ComposeServiceComponent{reverseProxy, uploadLimits, devMode},
+	})
 }
