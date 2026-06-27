@@ -28,15 +28,21 @@ func createDefinition() plugin.CreateSpec {
 			"docker compose pull --ignore-buildable",
 			"docker compose build --pull",
 		},
+		Images: []plugin.ComposeImageSpec{
+			{Service: "ojs", Image: "libops/ojs:nginx-1.30.3-php84", BuildPolicy: plugin.BuildPolicyIfNotPresent},
+		},
 		DockerComposeInit: []string{
-			"docker compose pull --ignore-buildable",
-			"docker compose build --pull",
 			"docker compose run --rm init",
 		},
+		InitArtifacts: []plugin.InitArtifact{
+			{Path: "secrets/DB_ROOT_PASSWORD"},
+			{Path: "secrets/OJS_DB_PASSWORD"},
+			{Path: "secrets/OJS_API_KEY_SECRET"},
+			{Path: "secrets/OJS_SALT"},
+			{Path: "secrets/OJS_ADMIN_PASSWORD"},
+			{Path: "secrets/OJS_SECRET_KEY"},
+		},
 		DockerComposeUp: []string{
-			"docker compose pull --ignore-buildable",
-			"docker compose build --pull",
-			"./scripts/init-if-needed.sh",
 			"docker compose up --remove-orphans -d",
 		},
 		DockerComposeDown:    []string{"docker compose down"},
