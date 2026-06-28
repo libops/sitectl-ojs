@@ -1,5 +1,60 @@
 # sitectl-ojs
 
-A [sitectl](https://sitectl.libops.io) plugin for Open Journal Systems utilities. It works with the [LibOps OJS template](https://github.com/libops/ojs).
+`sitectl-ojs` adds Open Journal Systems create metadata, lifecycle operations, OJS and PKP tools, recurring maintenance helpers, validation, and health checks to [`sitectl`](https://sitectl.libops.io). It works with the [LibOps OJS template](https://github.com/libops/ojs).
 
-The docs are available at [https://sitectl.libops.io/plugins/ojs](https://sitectl.libops.io/plugins/ojs).
+Documentation: https://sitectl.libops.io/plugins/ojs
+
+## Requirements
+
+- [`sitectl`](https://sitectl.libops.io/install).
+- Docker with the Compose v2 plugin for local OJS sites.
+- No additional app-plugin dependency beyond core `sitectl`.
+
+## Quick Start
+
+Create a local OJS site from the matching template:
+
+```bash
+sitectl create ojs/default \
+  --template-repo https://github.com/libops/ojs \
+  --path ./my-ojs-site \
+  --type local \
+  --checkout-source template \
+  --default-context
+```
+
+The template README is at https://github.com/libops/ojs.
+
+## Basic Operations
+
+Use [`sitectl compose`](https://sitectl.libops.io/commands/compose) to start or inspect the stack:
+
+```bash
+sitectl compose up --remove-orphans -d
+```
+
+Use [`sitectl healthcheck`](https://sitectl.libops.io/commands/healthcheck) and [`sitectl validate`](https://sitectl.libops.io/commands/validate) to check the site:
+
+```bash
+sitectl healthcheck
+sitectl validate
+```
+
+Use [`sitectl image`](https://sitectl.libops.io/commands/image) for local image or build-arg overrides:
+
+```bash
+sitectl image set --tag ojs=nginx-1.30.3-php84
+```
+
+Use [`sitectl set`](https://sitectl.libops.io/commands/set) and [`sitectl converge`](https://sitectl.libops.io/commands/converge) for component changes:
+
+```bash
+sitectl set upload-limits enabled --max-upload-size 2G --upload-timeout 10m
+sitectl converge
+```
+
+See the [OJS plugin docs](https://sitectl.libops.io/plugins/ojs) for lifecycle operations, OJS tools, PKP tools, and recurring maintenance.
+
+## License
+
+`sitectl-ojs` is licensed under the MIT License.
