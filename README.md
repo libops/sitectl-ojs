@@ -1,6 +1,6 @@
 # sitectl-ojs
 
-`sitectl-ojs` adds Open Journal Systems create metadata, lifecycle operations, OJS and PKP tools, recurring maintenance helpers, validation, and health checks to [`sitectl`](https://sitectl.libops.io). It works with the [LibOps OJS template](https://github.com/libops/ojs).
+`sitectl-ojs` simplifies the creation and operation of repositories created using the [LibOps OJS template](https://github.com/libops/ojs). It provides sitectl commands for OJS and PKP tools, recurring maintenance, validation, and health checks.
 
 Documentation: https://sitectl.libops.io/plugins/ojs
 
