@@ -68,7 +68,7 @@ func RegisterCommands(s *plugin.SDK) {
 		ReadyMessage:  "OJS is ready for use through sitectl.",
 	})
 	registerApplicationComponents(s, "OJS", "ojs")
-	s.RegisterHealthcheckRunner(ojsHealthcheckRunner{})
+	s.RegisterHealthcheckRunner(ojsHealthcheckRunner)
 	registerOJSCommands(s)
 }
 
