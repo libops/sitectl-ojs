@@ -42,6 +42,12 @@ func createDefinition() plugin.CreateSpec {
 			{Path: "secrets/OJS_ADMIN_PASSWORD"},
 			{Path: "secrets/OJS_SECRET_KEY"},
 		},
+		InitVolumes: []plugin.InitVolume{
+			{Name: "mariadb-data"},
+			{Name: "ojs-cache"},
+			{Name: "ojs-files"},
+			{Name: "ojs-public"},
+		},
 		DockerComposeUp: []string{
 			"docker compose up --remove-orphans -d",
 		},
