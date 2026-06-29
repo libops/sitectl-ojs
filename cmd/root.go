@@ -26,21 +26,40 @@ func createDefinition() plugin.CreateSpec {
 		DockerComposeBranch: createBranch,
 		DockerComposeBuild: []string{
 			"docker compose pull --ignore-buildable",
-			"docker compose build --pull",
+			"docker compose build",
+		},
+		Images: []plugin.ComposeImageSpec{
+			{Service: "ojs", Image: "libops/ojs:nginx-1.30.3-php84", BuildPolicy: plugin.BuildPolicyIfNotPresent},
 		},
 		DockerComposeInit: []string{
-			"docker compose pull --ignore-buildable",
-			"docker compose build --pull",
 			"docker compose run --rm init",
 		},
+		InitArtifacts: []plugin.InitArtifact{
+			{Path: "secrets/DB_ROOT_PASSWORD"},
+			{Path: "secrets/OJS_DB_PASSWORD"},
+			{Path: "secrets/OJS_API_KEY_SECRET"},
+			{Path: "secrets/OJS_SALT"},
+			{Path: "secrets/OJS_ADMIN_PASSWORD"},
+			{Path: "secrets/OJS_SECRET_KEY"},
+		},
+		InitVolumes: []plugin.InitVolume{
+			{Name: "mariadb-data"},
+			{Name: "ojs-cache"},
+			{Name: "ojs-files"},
+			{Name: "ojs-public"},
+		},
 		DockerComposeUp: []string{
-			"docker compose pull --ignore-buildable",
-			"docker compose build --pull",
-			"./scripts/init-if-needed.sh",
 			"docker compose up --remove-orphans -d",
 		},
-		DockerComposeDown:    []string{"docker compose down"},
-		DockerComposeRollout: []string{"./scripts/rollout.sh"},
+		DockerComposeDown: []string{"docker compose down"},
+		DockerComposeRollout: []string{
+			"docker compose pull --ignore-buildable --quiet || docker compose pull --ignore-buildable || true",
+			"docker compose build --pull",
+			"docker compose run --rm init",
+			"docker compose up --remove-orphans --wait --pull missing --quiet-pull -d",
+			"docker compose exec -T ojs php tools/upgrade.php upgrade || echo \"OJS database upgrade skipped or failed\"",
+			"docker compose up --remove-orphans --wait --pull missing --quiet-pull -d",
+		},
 	}
 }
 
@@ -56,7 +75,7 @@ func RegisterCommands(s *plugin.SDK) {
 		ReadyMessage:  "OJS is ready for use through sitectl.",
 	})
 	registerApplicationComponents(s, "OJS", "ojs")
-	s.RegisterHealthcheckRunner(ojsHealthcheckRunner{})
+	s.RegisterHealthcheckRunner(ojsHealthcheckRunner)
 	registerOJSCommands(s)
 }
 
