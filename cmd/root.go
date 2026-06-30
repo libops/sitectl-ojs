@@ -76,6 +76,12 @@ func RegisterCommands(s *plugin.SDK) {
 	})
 	registerApplicationComponents(s, "OJS", "ojs")
 	s.RegisterHealthcheckRunner(ojsHealthcheckRunner)
+	s.RegisterIngressRouteProvider(plugin.StandardComposeWebIngressRoutesWithOptions(plugin.StandardComposeWebIngressOptions{
+		AppService:     "ojs",
+		Router:         "ojs-web",
+		URLVariables:   []string{"OJS_BASE_URL"},
+		HTTPSVariables: []string{"OJS_ENABLE_HTTPS"},
+	}))
 	registerOJSCommands(s)
 }
 
