@@ -80,11 +80,18 @@ func RegisterCommands(s *plugin.SDK) {
 }
 
 func registerApplicationComponents(s *plugin.SDK, displayName, appService string) {
-	reverseProxy, err := coretraefik.ReverseProxy(coretraefik.ReverseProxyOptions{AppService: appService})
-	if err != nil {
-		panic(err)
-	}
-	uploadLimits, err := coretraefik.UploadLimits(coretraefik.UploadLimitsOptions{AppService: appService})
+	ingress, err := coretraefik.Ingress(coretraefik.IngressOptions{
+		AppService:      appService,
+		HTTPEntrypoint:  "web",
+		HTTPSEntrypoint: "websecure",
+		ServiceEnvTemplates: map[string]map[string]string{
+			appService: {
+				"OJS_BASE_URL":          "{base_url}",
+				"OJS_ENABLE_HTTPS":      "{https_enabled}",
+				"OJS_OAI_REPOSITORY_ID": "{domain}",
+			},
+		},
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -108,6 +115,6 @@ func registerApplicationComponents(s *plugin.SDK, displayName, appService string
 	}
 	s.RegisterServiceComponents(plugin.ServiceComponentRegistryOptions{
 		DisplayName: displayName,
-		Components:  []corecomponent.ComposeServiceComponent{reverseProxy, uploadLimits, devMode},
+		Components:  []corecomponent.ComposeServiceComponent{ingress, devMode},
 	})
 }
