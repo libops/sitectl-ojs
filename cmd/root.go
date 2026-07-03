@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"context"
+
 	corecomponent "github.com/libops/sitectl/pkg/component"
+	"github.com/libops/sitectl/pkg/config"
 	"github.com/libops/sitectl/pkg/plugin"
 	coredevmode "github.com/libops/sitectl/pkg/services/devmode"
 	coretraefik "github.com/libops/sitectl/pkg/services/traefik"
@@ -77,10 +80,8 @@ func RegisterCommands(s *plugin.SDK) {
 	registerApplicationComponents(s, "OJS", "ojs")
 	s.RegisterHealthcheckRunner(ojsHealthcheckRunner)
 	s.RegisterIngressRouteProvider(plugin.StandardComposeWebIngressRoutesWithOptions(plugin.StandardComposeWebIngressOptions{
-		AppService:     "ojs",
-		Router:         "ojs-web",
-		URLVariables:   []string{"OJS_BASE_URL"},
-		HTTPSVariables: []string{"OJS_ENABLE_HTTPS"},
+		AppService: "ojs",
+		Router:     "ojs-web",
 	}))
 	registerOJSCommands(s)
 }
@@ -90,13 +91,8 @@ func registerApplicationComponents(s *plugin.SDK, displayName, appService string
 		AppService:      appService,
 		HTTPEntrypoint:  "web",
 		HTTPSEntrypoint: "websecure",
-		ServiceEnvTemplates: map[string]map[string]string{
-			appService: {
-				"OJS_BASE_URL":          "{base_url}",
-				"OJS_ENABLE_HTTPS":      "{https_enabled}",
-				"OJS_OAI_REPOSITORY_ID": "{domain}",
-			},
-		},
+		AppEnvDeletes:   []string{"OJS_ALLOWED_HOSTS", "OJS_BASE_URL", "OJS_ENABLE_HTTPS"},
+		AppUpdate:       applyOJSIngressUpdate(appService),
 	})
 	if err != nil {
 		panic(err)
@@ -123,4 +119,10 @@ func registerApplicationComponents(s *plugin.SDK, displayName, appService string
 		DisplayName: displayName,
 		Components:  []corecomponent.ComposeServiceComponent{ingress, devMode},
 	})
+}
+
+func applyOJSIngressUpdate(appService string) coretraefik.IngressAppUpdateFunc {
+	return func(_ context.Context, _ *config.Context, compose *corecomponent.ComposeFile, update coretraefik.IngressAppUpdate) error {
+		return compose.SetServiceEnv(appService, "OJS_OAI_REPOSITORY_ID", update.Domain)
+	}
 }
