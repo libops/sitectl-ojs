@@ -35,6 +35,7 @@ func createDefinition() plugin.CreateSpec {
 			{Service: "ojs", Image: "libops/ojs:nginx-1.30.3-php84", BuildPolicy: plugin.BuildPolicyIfNotPresent},
 		},
 		DockerComposeInit: []string{
+			"mkdir -p ./secrets",
 			"docker compose run --rm init",
 		},
 		InitArtifacts: []plugin.InitArtifact{
@@ -58,6 +59,7 @@ func createDefinition() plugin.CreateSpec {
 		DockerComposeRollout: []string{
 			"docker compose pull --ignore-buildable --quiet || docker compose pull --ignore-buildable || true",
 			"docker compose build --pull",
+			"mkdir -p ./secrets",
 			"docker compose run --rm init",
 			"docker compose up --remove-orphans --wait --pull missing --quiet-pull -d",
 			"docker compose exec -T ojs php tools/upgrade.php upgrade || echo \"OJS database upgrade skipped or failed\"",
