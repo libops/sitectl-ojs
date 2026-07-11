@@ -95,11 +95,26 @@ func assertMigrationBeforeWait(t *testing.T, commands []string, migration string
 		if strings.Contains(command, "||") {
 			t.Fatalf("migration must fail hard: %+v", commands)
 		}
-		if index < 2 || !strings.Contains(commands[index-1], "test -f /installed") || !strings.Contains(commands[index-1], "-ge 150") || strings.Contains(commands[index-2], "--wait") {
-			t.Fatalf("service must complete bounded setup readiness after a non-waiting start: %+v", commands)
+		if index < 2 || !strings.Contains(commands[index-1], "test -f /installed") || !strings.Contains(commands[index-1], "-ge 150") {
+			t.Fatalf("service must complete bounded setup readiness before migration: %+v", commands)
 		}
-		if index+1 >= len(commands) || !strings.Contains(commands[index+1], "--wait --wait-timeout 600") || strings.Contains(commands[index+1], "||") {
-			t.Fatalf("bounded final health wait must follow migration and fail hard: %+v", commands)
+		initialStart := commands[index-2]
+		wantInitialStart := "docker compose up --remove-orphans --pull missing --quiet-pull -d ojs"
+		if initialStart != wantInitialStart ||
+			!strings.HasSuffix(initialStart, " -d ojs") ||
+			strings.Contains(initialStart, "--wait") {
+			t.Fatalf("initial rollout start must target only OJS without waiting: %q", initialStart)
+		}
+		if index+1 >= len(commands) {
+			t.Fatalf("bounded final health wait must follow migration: %+v", commands)
+		}
+		finalStart := commands[index+1]
+		wantFinalStart := "docker compose up --remove-orphans --wait --wait-timeout 600 --pull missing --quiet-pull -d"
+		if finalStart != wantFinalStart ||
+			!strings.Contains(finalStart, "--wait --wait-timeout 600") ||
+			!strings.HasSuffix(finalStart, " -d") ||
+			strings.Contains(finalStart, "||") {
+			t.Fatalf("final rollout start must wait for the full stack and fail hard: %q", finalStart)
 		}
 		return
 	}
