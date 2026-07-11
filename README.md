@@ -43,15 +43,16 @@ sitectl validate
 Use [`sitectl image`](https://sitectl.libops.io/commands/image) for local image or build-arg overrides:
 
 ```bash
-sitectl image set --tag ojs=nginx-1.30.3-php84
+sitectl image set --tag ojs=3.5.0-5-php84
 ```
 
-Use [`sitectl set`](https://sitectl.libops.io/commands/set) and [`sitectl converge`](https://sitectl.libops.io/commands/converge) for component changes:
+The plugin intentionally does not register broad development bind mounts: mounting an entire OJS plugin category would hide plugins bundled in the versioned base image. Add custom plugins through the downstream build or an explicit per-plugin override.
+
+Use [`sitectl set`](https://sitectl.libops.io/commands/set) for component changes; it updates component-owned files immediately:
 
 ```bash
 sitectl set ingress enabled --mode https-custom --domain ojs.localhost
 sitectl set ingress enabled --trusted-ip 203.0.113.10/32 --max-upload-size 2G --upload-timeout 10m
-sitectl converge
 ```
 
 See the [OJS plugin docs](https://sitectl.libops.io/plugins/ojs) for lifecycle operations, OJS tools, PKP tools, and recurring maintenance.

@@ -6,7 +6,6 @@ import (
 	corecomponent "github.com/libops/sitectl/pkg/component"
 	"github.com/libops/sitectl/pkg/config"
 	"github.com/libops/sitectl/pkg/plugin"
-	coredevmode "github.com/libops/sitectl/pkg/services/devmode"
 	coretraefik "github.com/libops/sitectl/pkg/services/traefik"
 )
 
@@ -32,7 +31,7 @@ func createDefinition() plugin.CreateSpec {
 			"docker compose build",
 		},
 		Images: []plugin.ComposeImageSpec{
-			{Service: "ojs", Image: "libops/ojs:nginx-1.30.3-php84", BuildPolicy: plugin.BuildPolicyIfNotPresent},
+			{Service: "ojs", Image: "libops/ojs:3.5.0-5-php84", BuildPolicy: plugin.BuildPolicyAlways},
 		},
 		DockerComposeInit: []string{
 			"mkdir -p ./secrets",
@@ -48,22 +47,22 @@ func createDefinition() plugin.CreateSpec {
 		},
 		InitVolumes: []plugin.InitVolume{
 			{Name: "mariadb-data"},
-			{Name: "ojs-cache"},
 			{Name: "ojs-files"},
 			{Name: "ojs-public"},
 		},
 		DockerComposeUp: []string{
-			"docker compose up --remove-orphans -d",
+			"docker compose up --remove-orphans --wait --wait-timeout 600 -d",
 		},
 		DockerComposeDown: []string{"docker compose down"},
 		DockerComposeRollout: []string{
-			"docker compose pull --ignore-buildable --quiet || docker compose pull --ignore-buildable || true",
+			"docker compose pull --ignore-buildable --quiet || docker compose pull --ignore-buildable",
 			"docker compose build --pull",
 			"mkdir -p ./secrets",
 			"docker compose run --rm init",
-			"docker compose up --remove-orphans --wait --pull missing --quiet-pull -d",
-			"docker compose exec -T ojs php tools/upgrade.php upgrade || echo \"OJS database upgrade skipped or failed\"",
-			"docker compose up --remove-orphans --wait --pull missing --quiet-pull -d",
+			"docker compose up --remove-orphans --pull missing --quiet-pull -d",
+			"docker compose exec -T ojs sh -c 'attempt=0; until test -f /installed; do attempt=$((attempt + 1)); if [ \"$attempt\" -ge 150 ]; then echo \"OJS did not become ready for database migration within 5 minutes\" >&2; exit 1; fi; sleep 2; done'",
+			"docker compose exec -T ojs php tools/upgrade.php upgrade",
+			"docker compose up --remove-orphans --wait --wait-timeout 600 --pull missing --quiet-pull -d",
 		},
 	}
 }
@@ -99,27 +98,9 @@ func registerApplicationComponents(s *plugin.SDK, displayName, appService string
 	if err != nil {
 		panic(err)
 	}
-	devMode, err := coredevmode.Component(coredevmode.Options{
-		AppService: appService,
-		Volumes: []string{
-			"./plugins/blocks:/var/www/ojs/plugins/blocks:z,rw",
-			"./plugins/gateways:/var/www/ojs/plugins/gateways:z,rw",
-			"./plugins/generic:/var/www/ojs/plugins/generic:z,rw",
-			"./plugins/importexport:/var/www/ojs/plugins/importexport:z,rw",
-			"./plugins/metadata:/var/www/ojs/plugins/metadata:z,rw",
-			"./plugins/oaiMetadataFormats:/var/www/ojs/plugins/oaiMetadataFormats:z,rw",
-			"./plugins/paymethod:/var/www/ojs/plugins/paymethod:z,rw",
-			"./plugins/pubIds:/var/www/ojs/plugins/pubIds:z,rw",
-			"./plugins/reports:/var/www/ojs/plugins/reports:z,rw",
-			"./plugins/themes:/var/www/ojs/plugins/themes:z,rw",
-		},
-	})
-	if err != nil {
-		panic(err)
-	}
 	s.RegisterServiceComponents(plugin.ServiceComponentRegistryOptions{
 		DisplayName: displayName,
-		Components:  []corecomponent.ComposeServiceComponent{ingress, devMode},
+		Components:  []corecomponent.ComposeServiceComponent{ingress},
 	})
 }
 

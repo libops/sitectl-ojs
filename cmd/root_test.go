@@ -9,6 +9,7 @@ import (
 
 	corecomponent "github.com/libops/sitectl/pkg/component"
 	"github.com/libops/sitectl/pkg/config"
+	"github.com/libops/sitectl/pkg/plugin"
 	coretraefik "github.com/libops/sitectl/pkg/services/traefik"
 )
 
@@ -54,4 +55,53 @@ func TestOJSIngressUpdateSetsRepositoryID(t *testing.T) {
 	if !strings.Contains(got, want) {
 		t.Fatalf("expected compose to contain %q:\n%s", want, got)
 	}
+}
+
+func TestCreateDefinitionLifecycleContract(t *testing.T) {
+	t.Parallel()
+	spec := createDefinition()
+	if len(spec.Images) != 1 || spec.Images[0].Image != "libops/ojs:3.5.0-5-php84" || spec.Images[0].BuildPolicy != plugin.BuildPolicyAlways {
+		t.Fatalf("unexpected OJS image contract: %+v", spec.Images)
+	}
+	if len(spec.DockerComposeUp) != 1 || !strings.Contains(spec.DockerComposeUp[0], "--wait --wait-timeout 600") {
+		t.Fatalf("create must wait for service health before reporting ready: %+v", spec.DockerComposeUp)
+	}
+	for _, volume := range spec.InitVolumes {
+		if volume.Name == "ojs-cache" {
+			t.Fatalf("disposable OJS cache must not be lifecycle state: %+v", spec.InitVolumes)
+		}
+	}
+	rollout := strings.Join(spec.DockerComposeRollout, "\n")
+	if !strings.Contains(rollout, "php tools/upgrade.php upgrade") || strings.Contains(rollout, "|| true") || strings.Contains(rollout, "skipped or failed") {
+		t.Fatalf("OJS schema migration must run and fail hard:\n%s", rollout)
+	}
+	assertMigrationBeforeWait(t, spec.DockerComposeRollout, "php tools/upgrade.php upgrade")
+
+	sdk := plugin.NewSDK(plugin.Metadata{Name: "ojs"})
+	RegisterCommands(sdk)
+	for _, definition := range sdk.LocalComponentDefinitions() {
+		if definition.Name == "dev-mode" {
+			t.Fatal("dev-mode must not mask bundled OJS plugin directories")
+		}
+	}
+}
+
+func assertMigrationBeforeWait(t *testing.T, commands []string, migration string) {
+	t.Helper()
+	for index, command := range commands {
+		if !strings.Contains(command, migration) {
+			continue
+		}
+		if strings.Contains(command, "||") {
+			t.Fatalf("migration must fail hard: %+v", commands)
+		}
+		if index < 2 || !strings.Contains(commands[index-1], "test -f /installed") || !strings.Contains(commands[index-1], "-ge 150") || strings.Contains(commands[index-2], "--wait") {
+			t.Fatalf("service must complete bounded setup readiness after a non-waiting start: %+v", commands)
+		}
+		if index+1 >= len(commands) || !strings.Contains(commands[index+1], "--wait --wait-timeout 600") || strings.Contains(commands[index+1], "||") {
+			t.Fatalf("bounded final health wait must follow migration and fail hard: %+v", commands)
+		}
+		return
+	}
+	t.Fatalf("migration %q not found: %+v", migration, commands)
 }

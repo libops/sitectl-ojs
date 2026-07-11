@@ -87,7 +87,16 @@ create_site() {
 		--default-context \
 		"${extra_args[@]}"
 
-	HOME="${SITECTL_HOME}" sitectl image set --tag ojs=nginx-1.30.3-php84
+	HOME="${SITECTL_HOME}" sitectl image set --tag ojs=3.5.0-5-php84
+	(
+		cd "${SITE_DIR}"
+		docker compose config --format json |
+			jq -e '.services.ojs.build.args.BASE_IMAGE == "libops/ojs:3.5.0-5-php84"' >/dev/null
+	)
+	if grep -q '^[[:space:]]*image:' "${SITE_DIR}/docker-compose.override.yml"; then
+		echo "buildable OJS override unexpectedly wrote an image field" >&2
+		return 1
+	fi
 	HOME="${SITECTL_HOME}" sitectl compose up
 }
 
