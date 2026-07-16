@@ -43,6 +43,7 @@ brews:
   - name: sitectl-ojs
     description: "A sitectl plugin for Open Journal Systems stacks"
     homepage: "https://github.com/libops/sitectl-ojs"
+    url_template: "https://github.com/libops/sitectl-ojs/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
     license: MIT
     commit_author:
       name: sitectl-dev[bot]
