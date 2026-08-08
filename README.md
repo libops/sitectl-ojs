@@ -6,7 +6,7 @@ Documentation: https://sitectl.libops.io/plugins/ojs
 
 ## Requirements
 
-- Stable [`sitectl`](https://sitectl.libops.io/install) v1.0.0 or newer; this plugin uses RPC protocol 1.
+- [`sitectl`](https://sitectl.libops.io/install) v1.7.0 or newer provides the RPC verifier SDK; promotion must pin the first core release that also includes `verify --strict` semantics.
 - Docker with the Compose v2 plugin for local OJS sites.
 - No additional app-plugin dependency beyond core `sitectl`.
 
@@ -38,7 +38,20 @@ Use [`sitectl healthcheck`](https://sitectl.libops.io/commands/healthcheck) and 
 ```bash
 sitectl healthcheck
 sitectl validate
+sitectl verify --strict
 ```
+
+## Behavioral verification
+
+`sitectl verify --strict` checks the running OJS code/database version pair, scoped MariaDB identity, rendered URL/OAI/scheduler/SMTP configuration, OAI-PMH `Identify` for the first enabled journal, and private/public storage access. A new installation with no enabled journal reports OAI as not yet applicable; once a journal is enabled, the same gate requires a valid OAI-PMH envelope.
+
+Production verification is read-only. Disposable CI may add a reversible service-account storage write/read/delete probe:
+
+```bash
+sitectl verify --strict --disposable
+```
+
+Never use `--disposable` for a retained customer site. The local verifier does not replace hosted acceptance for public DNS/TLS, external ingress, real mail delivery, browser authentication, editorial publication, authorized submission download, or upgrade-from-prior-release fixtures.
 
 Use [`sitectl image`](https://sitectl.libops.io/commands/image) for local image or build-arg overrides:
 

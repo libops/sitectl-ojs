@@ -140,10 +140,15 @@ run_healthcheck() {
 	done
 }
 
+run_verify() {
+	HOME="${SITECTL_HOME}" sitectl verify --strict --disposable
+}
+
 main() {
 	build_plugin
 	create_site
 	run_healthcheck
+	run_verify
 }
 
 main "$@"

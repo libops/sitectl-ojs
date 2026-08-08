@@ -80,6 +80,7 @@ func RegisterCommands(s *plugin.SDK) {
 	})
 	registerApplicationComponents(s, "OJS", "ojs")
 	s.RegisterHealthcheckRunner(ojsHealthcheckRunner)
+	s.RegisterVerifyRunner(&ojsVerifyRunner{sdk: s})
 	s.RegisterIngressRouteProvider(plugin.StandardComposeWebIngressRoutesWithOptions(plugin.StandardComposeWebIngressOptions{
 		AppService: "ojs",
 		Router:     "ojs-web",
