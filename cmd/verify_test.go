@@ -119,6 +119,21 @@ func TestOJSVerifyRejectsRootDatabaseIdentity(t *testing.T) {
 	}
 }
 
+func TestOJSVerifyDatabaseProbeUsesRenderedConfiguration(t *testing.T) {
+	t.Parallel()
+
+	for _, required := range []string{"parse_ini_file(\"config.inc.php\"", "INI_SCANNER_RAW", "database_mariadb_with_password", "${database[3]}"} {
+		if !strings.Contains(ojsDatabaseProbe, required) {
+			t.Fatalf("database probe does not read %q from rendered configuration: %s", required, ojsDatabaseProbe)
+		}
+	}
+	for _, forbidden := range []string{"$DB_HOST", "$DB_PORT", "$DB_USER", "$DB_PASSWORD", "$DB_NAME"} {
+		if strings.Contains(ojsDatabaseProbe, forbidden) {
+			t.Fatalf("database probe still depends on application environment %q: %s", forbidden, ojsDatabaseProbe)
+		}
+	}
+}
+
 func TestOJSVerifyRejectsIncompleteUpgradeAndConfigOutput(t *testing.T) {
 	t.Parallel()
 

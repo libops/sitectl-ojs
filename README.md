@@ -43,7 +43,7 @@ sitectl verify --strict
 
 ## Behavioral verification
 
-`sitectl verify --strict` checks the running OJS code/database version pair, scoped MariaDB identity, rendered URL/OAI/scheduler/SMTP configuration, OAI-PMH `Identify` for the first enabled journal, and private/public storage access. A new installation with no enabled journal reports OAI as not yet applicable; once a journal is enabled, the same gate requires a valid OAI-PMH envelope.
+`sitectl verify --strict` checks the running OJS code/database version pair, scoped MariaDB identity, rendered URL/OAI/scheduler/SMTP configuration, OAI-PMH `Identify` for the first enabled journal, and private/public storage access. The database probe reads the connection selected by the rendered `config.inc.php`; its password stays inside the container and is never copied into Docker process arguments or verifier output. A new installation with no enabled journal reports OAI as not yet applicable; once a journal is enabled, the same gate requires a valid OAI-PMH envelope.
 
 Production verification is read-only. Disposable CI may add a reversible service-account storage write/read/delete probe:
 
