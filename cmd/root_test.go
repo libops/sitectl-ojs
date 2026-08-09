@@ -60,6 +60,9 @@ func TestOJSIngressUpdateSetsRepositoryID(t *testing.T) {
 func TestCreateDefinitionLifecycleContract(t *testing.T) {
 	t.Parallel()
 	spec := createDefinition()
+	if spec.DockerComposeBranch != "v1.2.0" {
+		t.Fatalf("OJS template revision = %q, want immutable v1.2.0", spec.DockerComposeBranch)
+	}
 	if len(spec.Images) != 1 || spec.Images[0].Image != "libops/ojs:3.5.0-5-php84" || spec.Images[0].BuildPolicy != plugin.BuildPolicyAlways {
 		t.Fatalf("unexpected OJS image contract: %+v", spec.Images)
 	}
@@ -95,7 +98,7 @@ func assertMigrationBeforeWait(t *testing.T, commands []string, migration string
 		if strings.Contains(command, "||") {
 			t.Fatalf("migration must fail hard: %+v", commands)
 		}
-		if index < 2 || !strings.Contains(commands[index-1], "test -f /installed") || !strings.Contains(commands[index-1], "-ge 150") {
+		if index < 2 || commands[index-1] != "docker compose exec -T ojs /usr/local/bin/sitectl-ojs-rollout-readiness" {
 			t.Fatalf("service must complete bounded setup readiness before migration: %+v", commands)
 		}
 		initialStart := commands[index-2]

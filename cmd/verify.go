@@ -17,11 +17,10 @@ import (
 )
 
 const (
-	ojsExpectedVersion  = "3.5.0.5"
-	ojsDatabaseProbe    = `. /usr/local/share/libops/database.sh; mapfile -d '' -t database < <(php -r '$config = parse_ini_file("config.inc.php", true, INI_SCANNER_RAW); $database = $config["database"] ?? null; if (!is_array($database)) { fwrite(STDERR, "config.inc.php omitted [database]\n"); exit(2); } foreach (["host", "port", "username", "password", "name"] as $key) { $value = $database[$key] ?? ""; if (!is_string($value) || $value === "") { fwrite(STDERR, "config.inc.php database." . $key . " is empty\n"); exit(2); } fwrite(STDOUT, $value . "\0"); }'); if [ "${#database[@]}" -ne 5 ]; then printf '%s\n' 'could not read database credentials from config.inc.php' >&2; exit 2; fi; database_mariadb_with_password "${database[3]}" --host="${database[0]}" --port="${database[1]}" --user="${database[2]}" --database="${database[4]}" --batch --skip-column-names --execute="SELECT CURRENT_USER(), COALESCE((SELECT path FROM journals WHERE enabled = 1 ORDER BY journal_id LIMIT 1), '');"`
-	ojsConfigProbe      = `$c = parse_ini_file("config.inc.php", true); echo json_encode(["installed" => $c["general"]["installed"] ?? null, "base_url" => $c["general"]["base_url"] ?? null, "files_dir" => $c["files"]["files_dir"] ?? null, "public_files_dir" => $c["files"]["public_files_dir"] ?? null, "repository_id" => $c["oai"]["repository_id"] ?? null, "task_runner" => $c["schedule"]["task_runner"] ?? null, "smtp" => $c["email"]["smtp"] ?? null, "smtp_server" => $c["email"]["smtp_server"] ?? null, "smtp_port" => $c["email"]["smtp_port"] ?? null], JSON_THROW_ON_ERROR);`
-	ojsReadOnlyStorage  = `test -r /var/www/files && test -w /var/www/files && test -r /var/www/ojs/public && test -w /var/www/ojs/public && printf '%s\n' 'storage writable'`
-	ojsStorageRoundTrip = `private=/var/www/files/.sitectl-verify-$$; public=/var/www/ojs/public/.sitectl-verify-$$; cleanup() { rm -f -- "$private" "$public"; }; trap cleanup EXIT INT TERM; printf '%s' sitectl-verify >"$private"; printf '%s' sitectl-verify >"$public"; test "$(cat "$private")" = sitectl-verify; test "$(cat "$public")" = sitectl-verify; cleanup; trap - EXIT INT TERM; printf '%s\n' 'storage round trip complete'`
+	ojsExpectedVersion   = "3.5.0.5"
+	ojsDatabaseProbePath = "/usr/local/bin/sitectl-ojs-verify-database"
+	ojsConfigProbePath   = "/usr/local/share/libops/sitectl-ojs-runtime-config.php"
+	ojsStorageProbePath  = "/usr/local/bin/sitectl-ojs-verify-storage"
 )
 
 var ojsJournalPathPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
@@ -74,10 +73,10 @@ func runOJSVerifyChecks(ctx context.Context, runtime ojsVerifyRuntime, disposabl
 	upgradeOutput, upgradeErr := runtime.ExecCapture(ctx, []string{"php", "tools/upgrade.php", "check"})
 	results = append(results, ojsVersionResult(upgradeOutput, upgradeErr))
 
-	databaseOutput, databaseErr := runtime.ExecCapture(ctx, []string{"bash", "-lc", ojsDatabaseProbe})
+	databaseOutput, databaseErr := runtime.ExecCapture(ctx, []string{ojsDatabaseProbePath})
 	results = append(results, ojsDatabaseResult(databaseOutput, databaseErr))
 
-	configOutput, configErr := runtime.ExecCapture(ctx, []string{"php", "-r", ojsConfigProbe})
+	configOutput, configErr := runtime.ExecCapture(ctx, []string{"php", ojsConfigProbePath})
 	results = append(results, ojsConfigResult(configOutput, configErr))
 
 	journalPath := ojsJournalPath(databaseOutput)
@@ -94,13 +93,13 @@ func runOJSVerifyChecks(ctx context.Context, runtime ojsVerifyRuntime, disposabl
 		results = append(results, ojsOAIResult(oaiOutput, oaiErr, journalPath))
 	}
 
-	storageScript := ojsReadOnlyStorage
+	storageArgv := []string{"s6-setuidgid", "nginx", ojsStorageProbePath}
 	storageDetail := "private and public storage are writable by the OJS service account"
 	if disposable {
-		storageScript = ojsStorageRoundTrip
+		storageArgv = append(storageArgv, "--disposable")
 		storageDetail = "private and public storage completed a reversible write/read/delete round trip"
 	}
-	_, storageErr := runtime.ExecCapture(ctx, []string{"s6-setuidgid", "nginx", "sh", "-ec", storageScript})
+	_, storageErr := runtime.ExecCapture(ctx, storageArgv)
 	if storageErr != nil {
 		results = append(results, ojsVerifyFailed("verify:ojs:storage", storageErr.Error(), "repair ownership and permissions for /var/www/files and /var/www/ojs/public"))
 	} else {

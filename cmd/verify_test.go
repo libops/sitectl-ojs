@@ -27,13 +27,13 @@ func TestOJSVerifyChecksApplicationBehavior(t *testing.T) {
 		switch {
 		case strings.Contains(joined, "tools/upgrade.php check"):
 			return "Code version: 3.5.0.5\nDatabase version: 3.5.0.5\nLatest version: 3.5.0.5", nil
-		case strings.Contains(joined, "SELECT CURRENT_USER()"):
+		case strings.Contains(joined, ojsDatabaseProbePath):
 			return "ojs@%\tjournal", nil
-		case strings.Contains(joined, "parse_ini_file"):
+		case strings.Contains(joined, ojsConfigProbePath):
 			return `{"installed":"1","base_url":"https://journal.example.org","files_dir":"/var/www/files","public_files_dir":"public","repository_id":"journal.example.org","task_runner":"1","smtp":"1","smtp_server":"mail","smtp_port":"25"}`, nil
 		case strings.Contains(joined, "/index.php/journal/oai?verb=Identify"):
 			return `<?xml version="1.0"?><OAI-PMH xmlns="http://www.openarchives.org/OAI/2.0/"><Identify/></OAI-PMH>`, nil
-		case strings.Contains(joined, "test -w"):
+		case strings.Contains(joined, ojsStorageProbePath):
 			return "storage writable", nil
 		default:
 			return "", errors.New("unexpected command: " + joined)
@@ -56,14 +56,14 @@ func TestOJSVerifyNoJournalIsExplicitlyNotApplicable(t *testing.T) {
 		switch {
 		case strings.Contains(joined, "tools/upgrade.php check"):
 			return "Code version: 3.5.0.5\nDatabase version: 3.5.0.5", nil
-		case strings.Contains(joined, "SELECT CURRENT_USER()"):
+		case strings.Contains(joined, ojsDatabaseProbePath):
 			return "ojs@%\t", nil
-		case strings.Contains(joined, "parse_ini_file"):
+		case strings.Contains(joined, ojsConfigProbePath):
 			return `{"installed":"1","base_url":"http://localhost","files_dir":"/var/www/files","public_files_dir":"public","repository_id":"localhost","task_runner":"1","smtp":"1","smtp_server":"mail","smtp_port":"25"}`, nil
 		case strings.Contains(joined, "oai?verb=Identify"):
 			oaiCalled = true
 			return "", nil
-		case strings.Contains(joined, "test -w"):
+		case strings.Contains(joined, ojsStorageProbePath):
 			return "storage writable", nil
 		default:
 			return "", errors.New("unexpected command: " + joined)
@@ -89,11 +89,11 @@ func TestOJSVerifyDisposableModeUsesReversibleStorageProbe(t *testing.T) {
 		switch {
 		case strings.Contains(joined, "tools/upgrade.php check"):
 			return "Code version: 3.5.0.5\nDatabase version: 3.5.0.5", nil
-		case strings.Contains(joined, "SELECT CURRENT_USER()"):
+		case strings.Contains(joined, ojsDatabaseProbePath):
 			return "ojs@%\t", nil
-		case strings.Contains(joined, "parse_ini_file"):
+		case strings.Contains(joined, ojsConfigProbePath):
 			return `{"installed":"1","base_url":"http://localhost","files_dir":"/var/www/files","public_files_dir":"public","repository_id":"localhost","task_runner":"1","smtp":"1","smtp_server":"mail","smtp_port":"25"}`, nil
-		case strings.Contains(joined, ".sitectl-verify"):
+		case strings.Contains(joined, ojsStorageProbePath) && strings.Contains(joined, "--disposable"):
 			storageCommand = joined
 			return "storage round trip complete", nil
 		default:
@@ -103,7 +103,7 @@ func TestOJSVerifyDisposableModeUsesReversibleStorageProbe(t *testing.T) {
 
 	results := runOJSVerifyChecks(context.Background(), runtime, true)
 	assertAllOJSVerifyOK(t, results, 5)
-	for _, required := range []string{"s6-setuidgid nginx", ".sitectl-verify", "trap", "rm -f"} {
+	for _, required := range []string{"s6-setuidgid nginx", ojsStorageProbePath, "--disposable"} {
 		if !strings.Contains(storageCommand, required) {
 			t.Fatalf("disposable storage probe missing %q: %s", required, storageCommand)
 		}
@@ -119,17 +119,16 @@ func TestOJSVerifyRejectsRootDatabaseIdentity(t *testing.T) {
 	}
 }
 
-func TestOJSVerifyDatabaseProbeUsesRenderedConfiguration(t *testing.T) {
+func TestOJSVerifyUsesCheckedInPrograms(t *testing.T) {
 	t.Parallel()
 
-	for _, required := range []string{"parse_ini_file(\"config.inc.php\"", "INI_SCANNER_RAW", "database_mariadb_with_password", "${database[3]}"} {
-		if !strings.Contains(ojsDatabaseProbe, required) {
-			t.Fatalf("database probe does not read %q from rendered configuration: %s", required, ojsDatabaseProbe)
-		}
-	}
-	for _, forbidden := range []string{"$DB_HOST", "$DB_PORT", "$DB_USER", "$DB_PASSWORD", "$DB_NAME"} {
-		if strings.Contains(ojsDatabaseProbe, forbidden) {
-			t.Fatalf("database probe still depends on application environment %q: %s", forbidden, ojsDatabaseProbe)
+	for name, path := range map[string]string{
+		"database": ojsDatabaseProbePath,
+		"config":   ojsConfigProbePath,
+		"storage":  ojsStorageProbePath,
+	} {
+		if !strings.HasPrefix(path, "/") || strings.ContainsAny(path, " \t\n") {
+			t.Fatalf("%s probe must be invoked by stable absolute path: %q", name, path)
 		}
 	}
 }
