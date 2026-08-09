@@ -11,7 +11,7 @@ import (
 
 const (
 	createRepo   = "https://github.com/libops/ojs"
-	createBranch = "v1.2.0"
+	createBranch = "v1.2.1"
 	pluginName   = "ojs"
 	defaultPath  = "./ojs"
 )

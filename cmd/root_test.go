@@ -60,8 +60,8 @@ func TestOJSIngressUpdateSetsRepositoryID(t *testing.T) {
 func TestCreateDefinitionLifecycleContract(t *testing.T) {
 	t.Parallel()
 	spec := createDefinition()
-	if spec.DockerComposeBranch != "v1.2.0" {
-		t.Fatalf("OJS template revision = %q, want immutable v1.2.0", spec.DockerComposeBranch)
+	if spec.DockerComposeBranch != "v1.2.1" {
+		t.Fatalf("OJS template revision = %q, want immutable v1.2.1", spec.DockerComposeBranch)
 	}
 	if len(spec.Images) != 1 || spec.Images[0].Image != "libops/ojs:3.5.0-5-php84" || spec.Images[0].BuildPolicy != plugin.BuildPolicyAlways {
 		t.Fatalf("unexpected OJS image contract: %+v", spec.Images)
