@@ -6,7 +6,7 @@ Documentation: https://sitectl.libops.io/plugins/ojs
 
 ## Requirements
 
-- [`sitectl`](https://sitectl.libops.io/install) v1.7.0 or newer provides the RPC verifier SDK; promotion must pin the first core release that also includes `verify --strict` semantics.
+- [`sitectl`](https://sitectl.libops.io/install) v1.8.2 or newer provides the supported RPC verifier and strict-verification contract.
 - Docker with the Compose v2 plugin for local OJS sites.
 - No additional app-plugin dependency beyond core `sitectl`.
 
@@ -43,7 +43,7 @@ sitectl verify --strict
 
 ## Behavioral verification
 
-`sitectl verify --strict` checks the running OJS code/database version pair, scoped MariaDB identity, rendered URL/OAI/scheduler/SMTP configuration, OAI-PMH `Identify` for the first enabled journal, and private/public storage access. The database probe reads the connection selected by the rendered `config.inc.php`; its password stays inside the container and is never copied into Docker process arguments or verifier output. A new installation with no enabled journal reports OAI as not yet applicable; once a journal is enabled, the same gate requires a valid OAI-PMH envelope.
+`sitectl verify --strict` checks the running OJS code/database version pair, scoped MariaDB identity, rendered URL/OAI/scheduler/SMTP configuration, OAI-PMH `Identify` for the first enabled journal, and private/public storage access. Runtime inspection uses checked-in programs mounted read-only by the versioned Compose template; the plugin invokes those programs by stable paths instead of embedding PHP, SQL, or shell source in generated commands. The database probe reads the connection selected by the rendered `config.inc.php`; its password stays inside the container and is never copied into Docker process arguments or verifier output. A new installation with no enabled journal reports OAI as not yet applicable; once a journal is enabled, the same gate requires a valid OAI-PMH envelope.
 
 Production verification is read-only. Disposable CI may add a reversible service-account storage write/read/delete probe:
 

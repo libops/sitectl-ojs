@@ -11,7 +11,7 @@ import (
 
 const (
 	createRepo   = "https://github.com/libops/ojs"
-	createBranch = "v1.0.0"
+	createBranch = "v1.2.0"
 	pluginName   = "ojs"
 	defaultPath  = "./ojs"
 )
@@ -60,7 +60,7 @@ func createDefinition() plugin.CreateSpec {
 			"mkdir -p ./secrets",
 			"docker compose run --rm init",
 			"docker compose up --remove-orphans --pull missing --quiet-pull -d ojs",
-			"docker compose exec -T ojs sh -c 'attempt=0; until test -f /installed; do attempt=$((attempt + 1)); if [ \"$attempt\" -ge 150 ]; then echo \"OJS did not become ready for database migration within 5 minutes\" >&2; exit 1; fi; sleep 2; done'",
+			"docker compose exec -T ojs /usr/local/bin/sitectl-ojs-rollout-readiness",
 			"docker compose exec -T ojs php tools/upgrade.php upgrade",
 			"docker compose up --remove-orphans --wait --wait-timeout 600 --pull missing --quiet-pull -d",
 		},
