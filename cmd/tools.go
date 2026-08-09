@@ -148,7 +148,7 @@ func runOJSPHPTool(s *sitectlplugin.SDK, cmd *cobra.Command, path string, args .
 }
 
 func runOJSExec(s *sitectlplugin.SDK, cmd *cobra.Command, args ...string) error {
-	return s.RunActiveComposeProjectCommand(cmd, sitectlplugin.DockerComposeExecCommand(ojsService, args...))
+	return s.RunActiveComposeProjectArgv(cmd, sitectlplugin.DockerComposeExecArgv(ojsService, args...))
 }
 
 func normalizePHPToolName(name string) (string, error) {
